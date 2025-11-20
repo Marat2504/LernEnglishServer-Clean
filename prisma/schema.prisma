@@ -1,0 +1,400 @@
+// schema.prisma
+// Это полная структура базы данных для приложения "LearnWords".
+// Дизайн: Реляционная БД PostgreSQL с Prisma ORM.
+// Принципы: UUID для ID, временные метки, нормализация (3NF), индексы для производительности.
+// Соответствует ТЗ: пользователи, карточки, теги, режимы, статистика, геймификация, чат, мотивации, истории.
+// Улучшения: Добавлены индексы, длины строк (@db.VarChar), soft deletes (deletedAt?).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// =============================================================================
+// 1. Модель Пользователя (User )
+// Хранение учетных данных, уровня языка и связей с контентом.
+// При создании User автоматически создайте UserStats в коде (один-к-одному).
+// =============================================================================
+model User {
+  id                   String    @id @default(uuid()) @db.VarChar(36) // UUID для глобальной уникальности
+  email                String    @unique @db.VarChar(255) // Уникальный email для входа
+  passwordHash         String    @db.VarChar(255) // Хеш пароля (bcrypt)
+  username             String?   @db.VarChar(100) // Отображаемое имя (опционально)
+  avatarUrl            String?   @db.VarChar(500) // URL аватара (опционально)
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+  lastLogin            DateTime? // Последний вход
+  currentLanguageLevel String    @default("A1") @db.VarChar(10) // Уровень CEFR (A1-C2) для персонализации (Stories)
+  deletedAt            DateTime? // Soft delete (фильтровать where: { deletedAt: null })
+
+  // Связи
+  cards             Card[]
+  cardProgress      CardProgress[]
+  tags              Tag[]
+  userStats         UserStats?          @relation("User Stats") // Один-к-одному (создавайте в коде)
+  userAchievements  UserAchievement[]
+  userMissions      UserMission[]
+  chatDialogs       ChatDialog[]
+  favoriteQuotes    UserFavoriteQuote[]
+  userStoryProgress UserStoryProgress[]
+
+  @@index([email]) // Индекс для быстрого поиска по email (логин)
+  @@index([currentLanguageLevel]) // Для персонализации контента (Stories)
+}
+
+// =============================================================================
+// 2. Модель Карточки (Card)
+// Хранение слов/фраз с переводом, аудио, статусом и уровнем.
+// Фильтрация: по тегам, isLearned, difficultyLevel.
+// =============================================================================
+model Card {
+  id                 String    @id @default(uuid()) @db.VarChar(36)
+  userId             String    @db.VarChar(36)
+  englishWord        String    @db.VarChar(255) // Английское слово/фраза
+  russianTranslation String    @db.VarChar(255) // Русский перевод
+  notes              String?   @db.Text // Заметки/примеры (опционально)
+  audioUrl           String?   @db.VarChar(500) // URL аудио (TTS)
+  isLearned          Boolean   @default(false)
+  difficultyLevel    String?   @db.VarChar(10) // CEFR: A1-C1 (для фильтрации)
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+  deletedAt          DateTime? // Soft delete
+
+  // Связи
+  user         User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  cardTags     CardTag[]
+  cardProgress CardProgress[]
+
+  @@index([userId, isLearned]) // Быстрая фильтрация невыученных карточек пользователя
+  @@index([difficultyLevel]) // Фильтрация по уровню
+}
+
+// =============================================================================
+// 3. Модель Тега (Tag)
+// Предустановленные и пользовательские теги для категоризации.
+// Уникальность: по userId + name.
+// =============================================================================
+model Tag {
+  id           String    @id @default(uuid()) @db.VarChar(36)
+  userId       String?   @db.VarChar(36) // null для предустановленных
+  name         String    @db.VarChar(100) // Название тега
+  isPredefined Boolean   @default(false)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  deletedAt    DateTime? // Soft delete
+
+  // Связи
+  user     User?     @relation(fields: [userId], references: [id])
+  cardTags CardTag[]
+
+  @@unique([userId, name]) // Пользователь не может иметь дубли тегов
+  @@index([isPredefined]) // Быстрый поиск предустановленных
+}
+
+// =============================================================================
+// 4. Связь Card <-> Tag (многие ко многим)
+// =============================================================================
+model CardTag {
+  cardId     String   @db.VarChar(36)
+  tagId      String   @db.VarChar(36)
+  assignedAt DateTime @default(now())
+
+  card Card @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  tag  Tag  @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([cardId, tagId])
+}
+
+// =============================================================================
+// 5. Прогресс Карточки (CardProgress)
+// Отслеживание по режимам (StudyMode enum ниже).
+// correctAnswers: подряд (логика сброса в коде).
+// =============================================================================
+model CardProgress {
+  id               String    @id @default(uuid()) @db.VarChar(36)
+  cardId           String    @db.VarChar(36)
+  userId           String    @db.VarChar(36)
+  mode             StudyMode
+  correctAnswers   Int       @default(0) // Правильных подряд (порог 10 для isLearned)
+  incorrectAnswers Int       @default(0)
+  lastAttempt      DateTime  @default(now())
+
+  card Card @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id])
+
+  @@unique([cardId, userId, mode])
+  @@index([userId, mode]) // Фильтрация прогресса по пользователю и режиму
+}
+
+// Enum для режимов изучения (из ТЗ 4, с STORIES)
+enum StudyMode {
+  SPEED // Скоростной
+  QUIZ // С вариантами
+  MATCHING // Сопоставление
+  LISTENING // Аудирование
+  LIGHTNING // Молния
+  STORIES // Рассказики с вопросами (новое)
+}
+
+// =============================================================================
+// 6. Статистика Пользователя (User Stats)
+// Один-к-одному с User. Ежедневные метрики сбрасываются в коде (cron-job).
+// =============================================================================
+model UserStats {
+  id                String   @id @default(uuid()) @db.VarChar(36)
+  userId            String   @unique @db.VarChar(36)
+  totalWords        Int      @default(0)
+  learnedWords      Int      @default(0)
+  totalXp           Int      @default(0)
+  currentLevel      Int      @default(1)
+  timeSpentSec      Int      @default(0)
+  wordsViewedToday  Int      @default(0)
+  wordsLearnedToday Int      @default(0)
+  cardsAddedToday   Int      @default(0)
+  timeSpentTodaySec Int      @default(0)
+  storiesReadToday  Int      @default(0) // Новое: для историй
+  lastDailyReset    DateTime @default(now())
+
+  user User @relation("User Stats", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId]) // Быстрый доступ по пользователю
+}
+
+// =============================================================================
+// 7. Достижение (Achievement)
+// Описания бейджей/достижений (из ТЗ 8.3).
+// =============================================================================
+model Achievement {
+  id          String    @id @default(uuid()) @db.VarChar(36)
+  name        String    @unique @db.VarChar(100)
+  description String    @db.Text
+  icon        String    @db.VarChar(100) // Эмодзи или URL
+  threshold   Int?
+  category    String    @db.VarChar(50) // "Общие", "Истории" и т.д.
+  isSecret    Boolean   @default(false)
+  deletedAt   DateTime? // Soft delete
+
+  userAchievements UserAchievement[]
+
+  @@index([category]) // Фильтрация по категориям
+}
+
+// =============================================================================
+// 8. Связь User <-> Achievement
+// =============================================================================
+model UserAchievement {
+  userId        String   @db.VarChar(36)
+  achievementId String   @db.VarChar(36)
+  unlockedAt    DateTime @default(now())
+  progress      Int      @default(0)
+
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  achievement Achievement @relation(fields: [achievementId], references: [id], onDelete: Cascade)
+
+  @@id([userId, achievementId])
+  @@index([userId]) // Прогресс пользователя
+}
+
+// =============================================================================
+// 9. Задание (Mission)
+// Ежедневные/еженедельные челленджи (из ТЗ 8.4).
+// =============================================================================
+model Mission {
+  id            String      @id @default(uuid()) @db.VarChar(36)
+  name          String      @db.VarChar(100)
+  description   String      @db.Text
+  type          MissionType
+  targetValue   Int
+  rewardXp      Int
+  rewardBadgeId String?     @db.VarChar(36) // Ссылка на Achievement.id (опционально)
+  deletedAt     DateTime? // Soft delete
+
+  userMissions UserMission[]
+
+  @@index([type]) // Фильтрация по типу заданий
+}
+
+// Enum для типов заданий (обновлено с историями)
+enum MissionType {
+  LEARN_WORDS
+  QUIZ_MODE
+  LIGHTNING_MODE
+  REPEAT_TAG
+  ADD_CARDS
+  READ_STORIES // Новое: Прочитать N историй
+  ANSWER_STORY_QUESTIONS // Новое: Ответить на N вопросов
+}
+
+// =============================================================================
+// 10. Связь User <-> Mission
+// =============================================================================
+model UserMission {
+  userId      String    @db.VarChar(36)
+  missionId   String    @db.VarChar(36)
+  assignedAt  DateTime  @default(now())
+  completedAt DateTime?
+  progress    Int       @default(0)
+  isCompleted Boolean   @default(false)
+  isSkipped   Boolean   @default(false)
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  mission Mission @relation(fields: [missionId], references: [id], onDelete: Cascade)
+
+  @@id([userId, missionId])
+  @@index([userId, isCompleted]) // Активные задания пользователя
+}
+
+// =============================================================================
+// 11. Мотивационная Фраза (Quote)
+// "Фраза дня" с уникальной displayDate.
+// =============================================================================
+model Quote {
+  id                 String    @id @default(uuid()) @db.VarChar(36)
+  englishText        String    @db.VarChar(500) // Текст на английском
+  russianTranslation String    @db.VarChar(500)
+  grammarExplanation String?   @db.Text
+  miniChallenge      String?   @db.VarChar(255)
+  author             String?   @db.VarChar(100)
+  imageUrl           String?   @db.VarChar(500)
+  createdAt          DateTime  @default(now())
+  displayDate        DateTime? @unique // Уникальная дата показа ("фразы дня")
+  deletedAt          DateTime? // Soft delete
+
+  userFavoriteQuotes UserFavoriteQuote[]
+
+  @@index([displayDate]) // Быстрый поиск фразы дня
+}
+
+// =============================================================================
+// 12. Связь User <-> Quote (избранное)
+// =============================================================================
+model UserFavoriteQuote {
+  userId      String   @db.VarChar(36)
+  quoteId     String   @db.VarChar(36)
+  favoritedAt DateTime @default(now())
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  quote Quote @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+
+  @@id([userId, quoteId])
+}
+
+// =============================================================================
+// 13. Диалог с ИИ (ChatDialog)
+// Метаданные чата (из ТЗ 10).
+// =============================================================================
+model ChatDialog {
+  id         String    @id @default(uuid()) @db.VarChar(36)
+  userId     String    @db.VarChar(36)
+  topic      String?   @db.VarChar(100) // Тема (опционально)
+  difficulty String?   @db.VarChar(10) // A1-C2
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  deletedAt  DateTime? // Soft delete
+
+  user     User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages ChatMessage[]
+
+  @@index([userId]) // Диалоги пользователя
+}
+
+// =============================================================================
+// 14. Сообщение в Диалоге (ChatMessage)
+// Хранение сообщений с поддержкой аудио, коррекций и объяснений (из ТЗ 10.2).
+// =============================================================================
+model ChatMessage {
+  id          String        @id @default(uuid()) @db.VarChar(36)
+  dialogId    String        @db.VarChar(36)
+  sender      MessageSender
+  text        String        @db.Text // Текст сообщения
+  audioUrl    String?       @db.VarChar(500) // Аудио (STT/TTS)
+  correction  String?       @db.Text // Исправление от ИИ
+  explanation String?       @db.Text // Объяснение (грамматика/лексика)
+  createdAt   DateTime      @default(now())
+
+  dialog ChatDialog @relation(fields: [dialogId], references: [id], onDelete: Cascade)
+
+  @@index([dialogId]) // Сообщения по диалогу
+  @@index([sender]) // Фильтрация по отправителю (USER/AI)
+}
+
+// Enum для отправителя сообщения (USER или AI)
+enum MessageSender {
+  USER // От пользователя
+  AI // От ИИ
+}
+
+// =============================================================================
+// 15. Модель Истории (Story) - НОВАЯ ФУНКЦИЯ (из ТЗ 11)
+// Короткие рассказы на английском с изображением, уровнем и модерацией.
+// Персонализация: по User.currentLanguageLevel.
+// =============================================================================
+model Story {
+  id              String    @id @default(uuid()) @db.VarChar(36)
+  title           String    @db.VarChar(200) // Заголовок
+  englishText     String    @db.Text // Текст истории (до 1000 символов)
+  imageUrl        String?   @db.VarChar(500) // URL изображения
+  difficultyLevel String    @db.VarChar(10) // CEFR: A1-C1
+  source          String?   @db.VarChar(100) // "AI Generated", "Wikipedia"
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  isAiGenerated   Boolean   @default(false) // Сгенерировано ИИ
+  isApproved      Boolean   @default(false) // Модерация (true для показа)
+  deletedAt       DateTime? // Soft delete
+
+  // Связи
+  questions    StoryQuestion[]
+  userProgress UserStoryProgress[]
+
+  @@index([difficultyLevel]) // Персонализация по уровню (A1-C1)
+  @@index([isApproved]) // Только одобренные истории
+  @@index([isAiGenerated]) // Фильтрация сгенерированного контента
+}
+
+// =============================================================================
+// 16. Модель Вопроса к Истории (StoryQuestion) - НОВАЯ ФУНКЦИЯ (из ТЗ 11.3)
+// 4 варианта ответа (1 правильный + 3 неправильных).
+// =============================================================================
+model StoryQuestion {
+  id            String    @id @default(uuid()) @db.VarChar(36)
+  storyId       String    @db.VarChar(36)
+  questionText  String    @db.Text // Вопрос на английском
+  correctAnswer String    @db.Text // Правильный ответ
+  option1       String    @db.Text // Неправильный 1
+  option2       String    @db.Text // Неправильный 2
+  option3       String    @db.Text // Неправильный 3
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  deletedAt     DateTime? // Soft delete
+
+  // Связи
+  story Story @relation(fields: [storyId], references: [id], onDelete: Cascade)
+
+  @@index([storyId]) // Вопросы по истории
+}
+
+// =============================================================================
+// 17. Прогресс Пользователя по Истории (User StoryProgress) - НОВАЯ ФУНКЦИЯ (из ТЗ 11.4)
+// Отслеживание просмотров, ответов и завершения.
+// Интеграция с UserStats.storiesReadToday и достижениями.
+// =============================================================================
+model UserStoryProgress {
+  userId                String   @db.VarChar(36)
+  storyId               String   @db.VarChar(36)
+  lastViewedAt          DateTime @default(now()) // Последний просмотр
+  isCompleted           Boolean  @default(false) // Все вопросы отвечены
+  correctAnswersCount   Int      @default(0) // Правильных ответов
+  incorrectAnswersCount Int      @default(0) // Неправильных
+
+  // Связи
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  story Story @relation(fields: [storyId], references: [id], onDelete: Cascade)
+
+  @@id([userId, storyId]) // Уникальность: один прогресс на историю/пользователя
+  @@index([userId]) // Прогресс пользователя
+  @@index([isCompleted]) // Завершённые истории
+}
