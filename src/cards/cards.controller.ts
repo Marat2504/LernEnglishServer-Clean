@@ -146,13 +146,19 @@ export class CardsController {
 
   // Обновить статус выученности карточки
   @Patch(':id/learned')
-  @ApiOperation({ summary: 'Обновить статус выученности карточки (ручное переключение)' })
+  @ApiOperation({
+    summary: 'Обновить статус выученности карточки (ручное переключение)',
+  })
   @ApiResponse({ status: 200, description: 'Статус обновлён.' })
   async updateLearned(
     @Request() req,
     @Param('id', ParseUUIDPipe) id: string,
     @Body() updateLearnedDto: UpdateLearnedDto
   ) {
-    return this.cardsService.updateLearnedStatus(req.user.id, id, updateLearnedDto.isLearned);
+    return this.cardsService.updateLearnedStatus(
+      req.user.id,
+      id,
+      updateLearnedDto.isLearned
+    );
   }
 }

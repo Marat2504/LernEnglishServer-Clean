@@ -231,11 +231,14 @@ export class MissionsService {
       return;
     }
 
-    // Назначаем все активные миссии (для тестирования и полноты функционала)
-    const numMissions = activeMissions.length;
-    const selectedMissions = activeMissions;
+    // Назначаем одну случайную активную миссию
+    const numMissions = 1;
+    const randomIndex = Math.floor(Math.random() * activeMissions.length);
+    const selectedMissions = [activeMissions[randomIndex]];
 
-    console.log(`[DEBUG] Выбрана миссия: ${selectedMissions[0].name}`);
+    console.log(
+      `[DEBUG] Выбрана случайная миссия: ${selectedMissions[0].name}`
+    );
 
     // Назначаем пользователю
     const userMissionsData = selectedMissions.map(mission => ({
