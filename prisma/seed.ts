@@ -166,7 +166,190 @@ async function main() {
     }
   }
 
-  console.log('Seed завершён: предустановленные теги и миссии добавлены.');
+  // Достижения
+  const achievements = [
+    {
+      name: 'Первая карточка',
+      description: 'Создайте свою первую карточку слова.',
+      icon: '📝',
+      threshold: 1,
+      category: 'Карточки',
+      isSecret: false,
+    },
+    {
+      name: 'Создатель словаря',
+      description: 'Добавьте 10 карточек.',
+      icon: '📚',
+      threshold: 10,
+      category: 'Карточки',
+      isSecret: false,
+    },
+    {
+      name: 'Мастер словаря',
+      description: 'Добавьте 50 карточек.',
+      icon: '📖',
+      threshold: 50,
+      category: 'Карточки',
+      isSecret: false,
+    },
+    {
+      name: 'Первый шаг',
+      description: 'Выучите первое слово.',
+      icon: '👶',
+      threshold: 1,
+      category: 'Изучение',
+      isSecret: false,
+    },
+    {
+      name: 'Ученик',
+      description: 'Выучите 10 слов.',
+      icon: '🎓',
+      threshold: 10,
+      category: 'Изучение',
+      isSecret: false,
+    },
+    {
+      name: 'Мастер слов',
+      description: 'Выучите 50 слов.',
+      icon: '🧠',
+      threshold: 50,
+      category: 'Изучение',
+      isSecret: false,
+    },
+    {
+      name: 'Лингвист',
+      description: 'Выучите 100 слов.',
+      icon: '🌍',
+      threshold: 100,
+      category: 'Изучение',
+      isSecret: false,
+    },
+    {
+      name: 'Первый опыт',
+      description: 'Заработайте 10 XP.',
+      icon: '⭐',
+      threshold: 10,
+      category: 'XP',
+      isSecret: false,
+    },
+    {
+      name: 'Скоростной ученик',
+      description: 'Наберите 100 XP.',
+      icon: '⚡',
+      threshold: 100,
+      category: 'XP',
+      isSecret: false,
+    },
+    {
+      name: 'Опытный',
+      description: 'Наберите 500 XP.',
+      icon: '🔥',
+      threshold: 500,
+      category: 'XP',
+      isSecret: false,
+    },
+    {
+      name: 'Мастер XP',
+      description: 'Наберите 1000 XP.',
+      icon: '💎',
+      threshold: 1000,
+      category: 'XP',
+      isSecret: false,
+    },
+    {
+      name: 'Уровень 2',
+      description: 'Достигните 2 уровня.',
+      icon: '⬆️',
+      threshold: 2,
+      category: 'Уровни',
+      isSecret: false,
+    },
+    {
+      name: 'Уровень 5',
+      description: 'Достигните 5 уровня.',
+      icon: '⭐',
+      threshold: 5,
+      category: 'Уровни',
+      isSecret: false,
+    },
+    {
+      name: 'Уровень 10',
+      description: 'Достигните 10 уровня.',
+      icon: '🏆',
+      threshold: 10,
+      category: 'Уровни',
+      isSecret: false,
+    },
+    {
+      name: 'Первая сессия',
+      description: 'Завершите 1 сессию изучения.',
+      icon: '🎯',
+      threshold: 1,
+      category: 'Сессии',
+      isSecret: false,
+    },
+    {
+      name: 'Регулярный ученик',
+      description: 'Завершите 10 сессий изучения.',
+      icon: '📅',
+      threshold: 10,
+      category: 'Сессии',
+      isSecret: false,
+    },
+    {
+      name: 'Марафонец',
+      description: 'Завершите 50 сессий изучения.',
+      icon: '🏃',
+      threshold: 50,
+      category: 'Сессии',
+      isSecret: false,
+    },
+    {
+      name: 'Первая минута',
+      description: 'Проведите 1 минуту в изучении.',
+      icon: '⏱️',
+      threshold: 60,
+      category: 'Время',
+      isSecret: false,
+    },
+    {
+      name: 'Часовщик',
+      description: 'Проведите 1 час в изучении.',
+      icon: '🕐',
+      threshold: 3600,
+      category: 'Время',
+      isSecret: false,
+    },
+    {
+      name: 'Дедикейт',
+      description: 'Проведите 10 часов в изучении.',
+      icon: '⏳',
+      threshold: 36000,
+      category: 'Время',
+      isSecret: false,
+    },
+  ];
+
+  for (const achievement of achievements) {
+    const existing = await prisma.achievement.findUnique({
+      where: { name: achievement.name },
+    });
+
+    if (!existing) {
+      await prisma.achievement.create({
+        data: achievement,
+      });
+      console.log(`Создано достижение: ${achievement.name}`);
+    } else {
+      console.log(
+        `Достижение "${achievement.name}" уже существует (пропускаем).`
+      );
+    }
+  }
+
+  console.log(
+    'Seed завершён: предустановленные теги, миссии и достижения добавлены.'
+  );
 }
 
 main()

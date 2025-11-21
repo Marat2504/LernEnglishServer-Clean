@@ -2,6 +2,7 @@ import { Injectable, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { SessionResultDto } from './dto/session-result.dto';
 import { StudyMode } from '@prisma/client';
+import { AchievementsService } from '../achievements/achievements.service';
 import { MissionsService } from '../missions/missions.service'; // Импорт для обновления прогресса миссий
 
 @Injectable()

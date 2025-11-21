@@ -8,6 +8,7 @@ import { CardsModule } from './cards/cards.module';
 import { TagsModule } from './tags/tags.module';
 import { StudyModule } from './study/study.module';
 import { MissionsModule } from './missions/missions.module';
+import { AchievementsModule } from './achievements/achievements.module';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { MissionsModule } from './missions/missions.module';
     TagsModule,
     StudyModule,
     MissionsModule,
+    AchievementsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

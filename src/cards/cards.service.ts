@@ -10,6 +10,7 @@ import { CreateCardDto } from './dto/create-card.dto';
 import { Prisma } from '@prisma/client';
 import { TagsService } from '../tags/tags.service'; // Импорт для findOneTag
 import { MissionsService } from '../missions/missions.service'; // Импорт для обновления прогресса миссий
+import { AchievementsService } from '../achievements/achievements.service'; // Импорт для проверки достижений
 
 @Injectable()
 export class CardsService {
