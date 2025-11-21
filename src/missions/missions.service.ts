@@ -6,7 +6,7 @@ import { Mission } from '@prisma/client';
 export class MissionsService {
   constructor(private prisma: PrismaService) {}
 
-  // Получить активные дневные миссии пользователя
+  // Получить дневные миссии пользователя (включая завершенные)
   async getDailyMissions(userId: string) {
     console.log(`[DEBUG] Получение дневных миссий для пользователя: ${userId}`);
 
@@ -14,11 +14,16 @@ export class MissionsService {
       // Проверяем, нужно ли обновить миссии (ежедневный сброс)
       await this.checkAndAssignDailyMissions(userId);
 
-      // Получаем текущие активные миссии
+      const now = new Date();
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+      // Получаем все миссии, назначенные сегодня (включая завершенные)
       const userMissions = await this.prisma.userMission.findMany({
         where: {
           userId,
-          isCompleted: false,
+          assignedAt: {
+            gte: today,
+          },
           isSkipped: false,
         },
         include: {
