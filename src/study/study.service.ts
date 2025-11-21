@@ -115,7 +115,7 @@ export class StudyService {
       }
 
       // Рассчитать XP (например, 10 за правильный ответ, 5 за неправильный)
-      const xpForAnswer = isCorrect ? 10 : 5;
+      const xpForAnswer = isCorrect ? 2 : 1;
       totalXpGained += xpForAnswer;
 
       progressUpdates.push({
@@ -231,6 +231,18 @@ export class StudyService {
         await this.missionsService.updateMissionProgress(
           userId,
           'lightning-10-rounds',
+          1
+        );
+      }
+
+      // Миссия LISTENING_MODE: если режим LISTENING (если назначена)
+      if (
+        mode === StudyMode.LISTENING &&
+        missionIds.includes('add-cards-with-audio')
+      ) {
+        await this.missionsService.updateMissionProgress(
+          userId,
+          'add-cards-with-audio',
           1
         );
       }
