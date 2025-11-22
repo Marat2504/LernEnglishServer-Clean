@@ -1,4 +1,11 @@
-import { Controller, Get, Post, UseGuards, Request } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  UseGuards,
+  Request,
+  BadRequestException,
+} from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { AchievementsService } from './achievements.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -16,7 +23,10 @@ export class AchievementsController {
     description: 'List of achievements with unlock status.',
   })
   getAll(@Request() req: any) {
-    return this.achievementsService.getAllAchievements(req.user.userId);
+    if (!req.user?.id) {
+      throw new BadRequestException('User ID is missing in request.');
+    }
+    return this.achievementsService.getAllAchievements(req.user.id);
   }
 
   @Post('check')
@@ -27,7 +37,10 @@ export class AchievementsController {
     status: 200,
     description: 'Achievements checked and unlocked.',
   })
-  checkAndUnlock(@Request() req: any) {
-    return this.achievementsService.checkAndUnlockAchievements(req.user.userId);
+  async checkAndUnlock(@Request() req: any) {
+    if (!req.user?.id) {
+      throw new BadRequestException('User ID is missing in request.');
+    }
+    return this.achievementsService.checkAndUnlockAchievements(req.user.id);
   }
 }

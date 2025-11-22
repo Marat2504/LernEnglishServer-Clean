@@ -9,7 +9,8 @@ import { MissionsService } from '../missions/missions.service'; // Импорт 
 export class StudyService {
   constructor(
     private prisma: PrismaService,
-    private missionsService: MissionsService // Инжектим MissionsService для миссий
+    private missionsService: MissionsService, // Инжектим MissionsService для миссий
+    private achievementsService: AchievementsService // Инжектим AchievementsService для достижений
   ) {}
 
   async submitSessionResult(userId: string, dto: SessionResultDto) {

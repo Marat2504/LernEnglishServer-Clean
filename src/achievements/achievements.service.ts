@@ -109,9 +109,13 @@ export class AchievementsService {
         }
 
         // Проверить условие разблокировки
-        const isUnlocked = this.checkAchievementCondition(
-          achievement,
-          userStats
+        const isUnlocked = this.checkAchievementCondition(achievement, {
+          ...userStats,
+          totalSessions,
+        });
+
+        console.log(
+          `[DEBUG] Checking ${achievement.name}: threshold=${achievement.threshold}, isUnlocked=${isUnlocked}`
         );
 
         if (isUnlocked) {
