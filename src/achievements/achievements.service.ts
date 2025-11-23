@@ -103,11 +103,6 @@ export class AchievementsService {
       for (const achievement of achievements) {
         const userAchievement = unlockedMap.get(achievement.id);
 
-        // Если уже разблокировано, пропустить
-        if (userAchievement?.unlockedAt) {
-          continue;
-        }
-
         // Проверить условие разблокировки
         const isUnlocked = this.checkAchievementCondition(achievement, {
           ...userStats,
@@ -118,7 +113,7 @@ export class AchievementsService {
           `[DEBUG] Checking ${achievement.name}: threshold=${achievement.threshold}, isUnlocked=${isUnlocked}`
         );
 
-        if (isUnlocked) {
+        if (isUnlocked && !userAchievement?.unlockedAt) {
           // Разблокировать достижение
           await this.prisma.userAchievement.upsert({
             where: {
@@ -138,28 +133,33 @@ export class AchievementsService {
 
           newlyUnlocked.push(achievement.name);
           console.log(`[DEBUG] Разблокировано достижение: ${achievement.name}`);
-        } else {
-          // Обновить прогресс, если threshold задан
-          if (achievement.threshold) {
-            const currentProgress = this.getCurrentProgress(achievement, {
-              ...userStats,
-              totalSessions,
-            });
-            if (currentProgress > (userAchievement?.progress || 0)) {
-              await this.prisma.userAchievement.upsert({
-                where: {
-                  userId_achievementId: {
-                    userId,
-                    achievementId: achievement.id,
-                  },
-                },
-                update: { progress: currentProgress },
-                create: {
+        }
+
+        // Всегда обновлять прогресс, даже если достижение не разблокировано или уже разблокировано
+        if (achievement.threshold) {
+          const currentProgress = this.getCurrentProgress(achievement, {
+            ...userStats,
+            totalSessions,
+          });
+          if (currentProgress !== (userAchievement?.progress || 0)) {
+            await this.prisma.userAchievement.upsert({
+              where: {
+                userId_achievementId: {
                   userId,
                   achievementId: achievement.id,
-                  progress: currentProgress,
                 },
-              });
+              },
+              update: { progress: currentProgress },
+              create: {
+                userId,
+                achievementId: achievement.id,
+                progress: currentProgress,
+              },
+            });
+            if (userAchievement?.progress !== currentProgress) {
+              console.log(
+                `[DEBUG] Обновлен прогресс для ${achievement.name}: ${currentProgress}`
+              );
             }
           }
         }
