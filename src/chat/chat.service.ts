@@ -11,15 +11,21 @@ export class ChatService {
   constructor(private readonly prisma: PrismaService) {}
 
   // Создание нового диалога
-  async createDialog(userId: string, topic?: string, difficulty?: string) {
+  async createDialog(
+    userId: string,
+    topic?: string,
+    difficulty?: string,
+    languageLevel?: string
+  ) {
     this.logger.log(
-      `Создание нового диалога для userId=${userId}, topic=${topic}, difficulty=${difficulty}`
+      `Создание нового диалога для userId=${userId}, topic=${topic}, difficulty=${difficulty}, languageLevel=${languageLevel}`
     );
     return this.prisma.chatDialog.create({
       data: {
         userId,
         topic,
         difficulty,
+        languageLevel,
       },
     });
   }
@@ -57,18 +63,15 @@ export class ChatService {
   }
 
   // Вызов Blackbox.ai API для генерации ответа ИИ
-  async callBlackboxAi(inputText: string): Promise<string> {
+  async callBlackboxAi(messages: any[]): Promise<string> {
     try {
-      this.logger.log(`Вызов Blackbox.ai с запросом: ${inputText}`);
+      this.logger.log(
+        `Вызов Blackbox.ai с messages: ${JSON.stringify(messages)}`
+      );
       // Пример тела запроса, соответствующего API Blackbox.ai v1/chat/completions
       const requestBody = {
         model: 'blackboxai/openai/gpt-4',
-        messages: [
-          {
-            role: 'user',
-            content: inputText,
-          },
-        ],
+        messages,
         temperature: 0.7,
         max_tokens: 256,
         stream: false,
@@ -116,6 +119,7 @@ export class ChatService {
     this.logger.log(
       `Обработка пользовательского сообщения в диалоге ${dialogId}: ${userText}`
     );
+
     // Сохраняем сообщение пользователя
     const userMessage = await this.addMessageToDialog(
       dialogId,
@@ -123,8 +127,49 @@ export class ChatService {
       userText
     );
 
-    // Получаем ответ ИИ с помощью Blackbox.ai
-    const aiResponseText = await this.callBlackboxAi(userText);
+    // Получаем последние 5 сообщений в диалоге для контекста, кроме текущего
+    const recentMessages = await this.prisma.chatMessage.findMany({
+      where: {
+        dialogId,
+        NOT: {
+          text: userText, // Исключаем нынешнее сообщение, чтобы не дублировать
+          sender: 'USER',
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 5,
+    });
+
+    // Формируем массив сообщений для ИИ, переворачивая порядок на нормальный и добавляя роли
+    const messagesForAI = recentMessages
+      .slice()
+      .reverse()
+      .map(msg => ({
+        role: msg.sender === 'USER' ? 'user' : 'assistant',
+        content: msg.text,
+      }));
+
+    // Получаем информацию о диалоге (чтобы взять уровень языка)
+    const dialogInfo = await this.prisma.chatDialog.findUnique({
+      where: { id: dialogId },
+    });
+
+    // Добавляем системное сообщение с подсказкой про уровень языка
+    if (dialogInfo?.languageLevel) {
+      messagesForAI.unshift({
+        role: 'system',
+        content: `You are chatting with a user whose English level is ${dialogInfo.languageLevel}. Please adjust your language accordingly.`,
+      });
+    }
+
+    // Добавляем текущее сообщение пользователя в сообщения для ИИ
+    messagesForAI.push({
+      role: 'user',
+      content: userText,
+    });
+
+    // Получаем ответ ИИ
+    const aiResponseText = await this.callBlackboxAi(messagesForAI);
 
     // Сохраняем ответ ИИ
     const aiMessage = await this.addMessageToDialog(

@@ -288,13 +288,14 @@ model UserFavoriteQuote {
 // Метаданные чата (из ТЗ 10).
 // =============================================================================
 model ChatDialog {
-  id         String    @id @default(uuid()) @db.VarChar(36)
-  userId     String    @db.VarChar(36)
-  topic      String?   @db.VarChar(100) // Тема (опционально)
-  difficulty String?   @db.VarChar(10) // A1-C2
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
-  deletedAt  DateTime? // Soft delete
+  id            String    @id @default(uuid()) @db.VarChar(36)
+  userId        String    @db.VarChar(36)
+  topic         String?   @db.VarChar(100) // Тема (опционально)
+  difficulty    String?   @db.VarChar(10) // A1-C2
+  languageLevel String?   @db.VarChar(10) // Уровень знания языка пользователя (опционально)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  deletedAt     DateTime? // Soft delete
 
   user     User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   messages ChatMessage[]
