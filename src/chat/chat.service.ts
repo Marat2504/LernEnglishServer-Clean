@@ -180,4 +180,110 @@ export class ChatService {
 
     return { userMessage, aiMessage };
   }
+
+  // Новый метод для проверки и объяснения ошибок в пользовательском сообщении
+  async handleUserMessageWithCorrection(
+    dialogId: string,
+    userText: string
+  ): Promise<{
+    userMessage: any;
+    aiMessage: any;
+    correction: { correctedText: string; explanation: string };
+  }> {
+    this.logger.log(
+      `Обработка сообщения с коррекцией в диалоге ${dialogId}: ${userText}`
+    );
+
+    // Формируем отдельный prompt для коррекции и объяснений
+    const correctionPrompt = [
+      {
+        role: 'system',
+        content:
+          'Ты помощник по изучению английского языка. Проверь правильность следующего сообщения пользователя, исправь ошибки и подробно объясни их НА РУССКОМ ЯЗЫКЕ. ' +
+          'Ответь в формате JSON с полями correctedText и explanation.',
+      },
+      { role: 'user', content: userText },
+    ];
+
+    // Получаем коррекционный ответ ИИ
+    const correctionResponseRaw = await this.callBlackboxAi(correctionPrompt);
+
+    // Парсим JSON с исправлениями
+    let correction: { correctedText: string; explanation: string } = {
+      correctedText: '',
+      explanation: '',
+    };
+    try {
+      correction = JSON.parse(correctionResponseRaw);
+    } catch (e) {
+      this.logger.error('Ошибка парсинга JSON ответа на коррекцию', e);
+      correction = {
+        correctedText: userText,
+        explanation: 'Не удалось получить пояснения от ИИ.',
+      };
+    }
+
+    // Сохраняем сообщение пользователя сразу с исправлением и пояснением
+    const userMessage = await this.addMessageToDialog(
+      dialogId,
+      'USER',
+      userText,
+      undefined,
+      correction.correctedText,
+      correction.explanation
+    );
+
+    // Получаем последние 5 сообщений в диалоге для контекста, исключая сообщения с correction, а также исключая текущее сообщение
+    const recentMessages = await this.prisma.chatMessage.findMany({
+      where: {
+        dialogId,
+        correction: null,
+        NOT: {
+          id: userMessage.id,
+          sender: 'USER',
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 5,
+    });
+
+    // Формируем массив сообщений для регулярного ответа ИИ
+    const messagesForAI = recentMessages
+      .slice()
+      .reverse()
+      .map(msg => ({
+        role: msg.sender === 'USER' ? 'user' : 'assistant',
+        content: msg.text,
+      }));
+
+    // Получаем информацию о диалоге для уровня языка
+    const dialogInfo = await this.prisma.chatDialog.findUnique({
+      where: { id: dialogId },
+    });
+
+    if (dialogInfo?.languageLevel) {
+      messagesForAI.unshift({
+        role: 'system',
+        content: `You are chatting with a user whose English level is ${dialogInfo.languageLevel}. Please adjust your language accordingly.`,
+      });
+    }
+
+    // Добавляем текущее сообщение в сообщения для ИИ
+    messagesForAI.push({
+      role: 'user',
+      content: userText,
+    });
+
+    // Получаем обычный ответ ИИ (без коррекции)
+    const aiResponseText = await this.callBlackboxAi(messagesForAI);
+
+    // Сохраняем ответ ИИ
+    const aiMessage = await this.addMessageToDialog(
+      dialogId,
+      'AI',
+      aiResponseText
+    );
+
+    return { userMessage, aiMessage, correction };
+  }
 }

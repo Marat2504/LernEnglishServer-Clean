@@ -2,6 +2,7 @@ import { Controller, Post, Body, Param, Get } from '@nestjs/common';
 import { ChatService } from './chat.service';
 import { CreateDialogDto } from './dto/create-dialog.dto';
 import { CreateMessageDto } from './dto/create-message.dto';
+import { CreateCorrectionMessageDto } from './dto/create-correction-message.dto';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 
 @ApiTags('Chat')
@@ -56,6 +57,24 @@ export class ChatController {
     @Body('text') userText: string
   ) {
     return this.chatService.handleUserMessage(dialogId, userText);
+  }
+
+  @ApiOperation({
+    summary:
+      'Отправить сообщение пользователя, получить ответ ИИ и дополнительный разбор текста (коррекция и пояснения)',
+  })
+  @ApiResponse({
+    status: 201,
+    description:
+      'Сообщение обработано, ответ ИИ добавлен, дополнительно возвращена коррекция.',
+  })
+  @Post('dialog/:id/message/send-with-correction')
+  async sendMessageAndGetResponseWithCorrection(
+    @Param('id') dialogId: string,
+    @Body() createCorrectionMessageDto: CreateCorrectionMessageDto
+  ) {
+    const { text } = createCorrectionMessageDto;
+    return this.chatService.handleUserMessageWithCorrection(dialogId, text);
   }
 
   // Дополнительно можно добавить эндпоинты для управления диалогами
