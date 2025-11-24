@@ -9,6 +9,7 @@ import { TagsModule } from './tags/tags.module';
 import { StudyModule } from './study/study.module';
 import { MissionsModule } from './missions/missions.module';
 import { AchievementsModule } from './achievements/achievements.module';
+import { ChatModule } from './chat/chat.module';
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { AchievementsModule } from './achievements/achievements.module';
     StudyModule,
     MissionsModule,
     AchievementsModule,
+    ChatModule,
   ],
   controllers: [AppController],
   providers: [AppService],
