@@ -43,5 +43,20 @@ export class ChatController {
     );
   }
 
+  @ApiOperation({
+    summary: 'Отправить сообщение пользователя и получить ответ ИИ',
+  })
+  @ApiResponse({
+    status: 201,
+    description: 'Сообщение обработано и ответ ИИ добавлен.',
+  })
+  @Post('dialog/:id/message/send')
+  async sendMessageAndGetResponse(
+    @Param('id') dialogId: string,
+    @Body('text') userText: string
+  ) {
+    return this.chatService.handleUserMessage(dialogId, userText);
+  }
+
   // Дополнительно можно добавить эндпоинты для управления диалогами
 }
