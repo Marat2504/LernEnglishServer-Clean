@@ -55,7 +55,7 @@ export class ChatService {
 
     return {
       ...dialog,
-      messages: messages.reverse(), // Возвращаем в хронологическом порядке
+      messages: messages, // Возвращаем от новых к старым (для чата)
       pagination: {
         page,
         limit,
