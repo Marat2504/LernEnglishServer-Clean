@@ -30,6 +30,43 @@ export class ChatService {
     });
   }
 
+  // Получение списка диалогов пользователя
+  async getUserDialogs(userId: string, page: number = 1, limit: number = 20) {
+    const skip = (page - 1) * limit;
+
+    const [dialogs, totalDialogs] = await Promise.all([
+      this.prisma.chatDialog.findMany({
+        where: { userId },
+        orderBy: { updatedAt: 'desc' },
+        skip,
+        take: limit,
+        include: {
+          _count: {
+            select: { messages: true },
+          },
+        },
+      }),
+      this.prisma.chatDialog.count({
+        where: { userId },
+      }),
+    ]);
+
+    return {
+      dialogs: dialogs.map(dialog => ({
+        ...dialog,
+        messageCount: dialog._count.messages,
+      })),
+      pagination: {
+        page,
+        limit,
+        total: totalDialogs,
+        totalPages: Math.ceil(totalDialogs / limit),
+        hasNext: page * limit < totalDialogs,
+        hasPrev: page > 1,
+      },
+    };
+  }
+
   // Получение диалога по ID с сообщениями
   async getDialogById(dialogId: string, page: number = 1, limit: number = 50) {
     const skip = (page - 1) * limit;

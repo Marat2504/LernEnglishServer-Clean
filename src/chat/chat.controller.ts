@@ -10,6 +10,23 @@ import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 export class ChatController {
   constructor(private readonly chatService: ChatService) {}
 
+  @ApiOperation({ summary: 'Получить список диалогов пользователя' })
+  @ApiResponse({ status: 200, description: 'Список диалогов с пагинацией.' })
+  @Get('dialogs/:userId')
+  async getUserDialogs(
+    @Param('userId') userId: string,
+    @Query('page') page: string = '1',
+    @Query('limit') limit: string = '20'
+  ) {
+    const pageNum = parseInt(page, 10) || 1;
+    const limitNum = parseInt(limit, 10) || 20;
+
+    // Ограничения для безопасности
+    const safeLimit = Math.min(Math.max(limitNum, 5), 50); // 5-50 диалогов
+
+    return this.chatService.getUserDialogs(userId, pageNum, safeLimit);
+  }
+
   @ApiOperation({ summary: 'Создать новый диалог' })
   @ApiResponse({ status: 201, description: 'Диалог успешно создан.' })
   @Post('dialog')
