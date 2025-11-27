@@ -31,11 +31,40 @@ export class ChatService {
   }
 
   // Получение диалога по ID с сообщениями
-  async getDialogById(dialogId: string) {
-    return this.prisma.chatDialog.findUnique({
-      where: { id: dialogId },
-      include: { messages: true },
-    });
+  async getDialogById(dialogId: string, page: number = 1, limit: number = 50) {
+    const skip = (page - 1) * limit;
+
+    const [dialog, messages, totalMessages] = await Promise.all([
+      this.prisma.chatDialog.findUnique({
+        where: { id: dialogId },
+      }),
+      this.prisma.chatMessage.findMany({
+        where: { dialogId },
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: limit,
+      }),
+      this.prisma.chatMessage.count({
+        where: { dialogId },
+      }),
+    ]);
+
+    if (!dialog) {
+      return null;
+    }
+
+    return {
+      ...dialog,
+      messages: messages.reverse(), // Возвращаем в хронологическом порядке
+      pagination: {
+        page,
+        limit,
+        total: totalMessages,
+        totalPages: Math.ceil(totalMessages / limit),
+        hasNext: page * limit < totalMessages,
+        hasPrev: page > 1,
+      },
+    };
   }
 
   // Добавление сообщения в диалог

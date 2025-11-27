@@ -1,4 +1,4 @@
-import { Controller, Post, Body, Param, Get } from '@nestjs/common';
+import { Controller, Post, Body, Param, Get, Query } from '@nestjs/common';
 import { ChatService } from './chat.service';
 import { CreateDialogDto } from './dto/create-dialog.dto';
 import { CreateMessageDto } from './dto/create-message.dto';
@@ -18,11 +18,24 @@ export class ChatController {
     return this.chatService.createDialog(userId, topic, difficulty);
   }
 
-  @ApiOperation({ summary: 'Получить диалог с сообщениями по ID' })
-  @ApiResponse({ status: 200, description: 'Диалог с сообщениями.' })
+  @ApiOperation({ summary: 'Получить диалог с сообщениями по ID с пагинацией' })
+  @ApiResponse({
+    status: 200,
+    description: 'Диалог с сообщениями и информацией о пагинации.',
+  })
   @Get('dialog/:id')
-  async getDialog(@Param('id') id: string) {
-    return this.chatService.getDialogById(id);
+  async getDialog(
+    @Param('id') id: string,
+    @Query('page') page: string = '1',
+    @Query('limit') limit: string = '50'
+  ) {
+    const pageNum = parseInt(page, 10) || 1;
+    const limitNum = parseInt(limit, 10) || 50;
+
+    // Ограничения для безопасности
+    const safeLimit = Math.min(Math.max(limitNum, 10), 100); // 10-100 сообщений
+
+    return this.chatService.getDialogById(id, pageNum, safeLimit);
   }
 
   @ApiOperation({ summary: 'Добавить сообщение в диалог' })
