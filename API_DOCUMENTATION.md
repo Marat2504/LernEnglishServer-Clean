@@ -75,13 +75,12 @@ curl -X GET "http://localhost:3000/api/chat/dialogs?page=1&limit=10" \
 
 **Эндпоинт:** `POST /api/chat/dialog`
 
-**Назначение:** Создает новый чат-диалог для общения с ИИ-ассистентом.
+**Назначение:** Создает новый чат-диалог для общения с ИИ-ассистентом. UserId извлекается из JWT токена.
 
 **Тело запроса:**
 
 ```json
 {
-  "userId": "uuid-пользователя",
   "topic": "Тема разговора (опционально)",
   "difficulty": "A1-C2 (опционально)"
 }
@@ -94,7 +93,6 @@ curl -X POST http://localhost:3000/api/chat/dialog \
   -H "Authorization: Bearer YOUR_JWT_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
-    "userId": "123e4567-e89b-12d3-a456-426614174000",
     "topic": "Обсуждение путешествий",
     "difficulty": "B1"
   }'

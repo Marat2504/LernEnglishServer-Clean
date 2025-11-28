@@ -2,10 +2,6 @@ import { ApiProperty } from '@nestjs/swagger';
 import { IsOptional, IsString } from 'class-validator';
 
 export class CreateDialogDto {
-  @ApiProperty({ description: 'ID пользователя' })
-  @IsString()
-  userId: string;
-
   @ApiProperty({ description: 'Тема диалога', required: false })
   @IsOptional()
   @IsString()

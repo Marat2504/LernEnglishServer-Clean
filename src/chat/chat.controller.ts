@@ -52,9 +52,32 @@ export class ChatController {
 
   @ApiOperation({ summary: 'Создать новый диалог' })
   @ApiResponse({ status: 201, description: 'Диалог успешно создан.' })
+  @ApiBody({
+    type: CreateDialogDto,
+    description: 'Параметры для создания нового диалога',
+    examples: {
+      'Создать диалог с темой': {
+        summary: 'Создание диалога с указанием темы',
+        value: {
+          topic: 'Обсуждение путешествий',
+          difficulty: 'B1',
+        },
+      },
+      'Создать диалог без параметров': {
+        summary: 'Создание диалога с параметрами по умолчанию',
+        value: {},
+      },
+    },
+  })
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
   @Post('dialog')
-  async createDialog(@Body() createDialogDto: CreateDialogDto) {
-    const { userId, topic, difficulty } = createDialogDto;
+  async createDialog(
+    @Req() req: any,
+    @Body() createDialogDto: CreateDialogDto
+  ) {
+    const userId = req.user.id;
+    const { topic, difficulty } = createDialogDto;
     return this.chatService.createDialog(userId, topic, difficulty);
   }
 
