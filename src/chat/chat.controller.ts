@@ -7,6 +7,8 @@ import {
   Query,
   Delete,
   Put,
+  UseGuards,
+  Req,
 } from '@nestjs/common';
 import { ChatService } from './chat.service';
 import { CreateDialogDto } from './dto/create-dialog.dto';
@@ -19,7 +21,9 @@ import {
   ApiResponse,
   ApiBody,
   ApiParam,
+  ApiBearerAuth,
 } from '@nestjs/swagger';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
 @ApiTags('Chat')
 @Controller('chat')
@@ -28,12 +32,15 @@ export class ChatController {
 
   @ApiOperation({ summary: 'Получить список диалогов пользователя' })
   @ApiResponse({ status: 200, description: 'Список диалогов с пагинацией.' })
-  @Get('dialogs/:userId')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @Get('dialogs')
   async getUserDialogs(
-    @Param('userId') userId: string,
+    @Req() req: any,
     @Query('page') page: string = '1',
     @Query('limit') limit: string = '20'
   ) {
+    const userId = req.user.id;
     const pageNum = parseInt(page, 10) || 1;
     const limitNum = parseInt(limit, 10) || 20;
 

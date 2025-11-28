@@ -8,9 +8,9 @@
 
 ## 1. Получение списка диалогов пользователя
 
-**Эндпоинт:** `GET /api/chat/dialogs/{userId}?page=1&limit=20`
+**Эндпоинт:** `GET /api/chat/dialogs?page=1&limit=20`
 
-**Назначение:** Получает список всех диалогов пользователя для выбора активного чата.
+**Назначение:** Получает список всех диалогов аутентифицированного пользователя для выбора активного чата. UserId извлекается из JWT токена.
 
 **Параметры запроса:**
 
@@ -20,7 +20,7 @@
 **Пример запроса:**
 
 ```bash
-curl -X GET "http://localhost:3000/api/chat/dialogs/123e4567-e89b-12d3-a456-426614174000?page=1&limit=10" \
+curl -X GET "http://localhost:3000/api/chat/dialogs?page=1&limit=10" \
   -H "Authorization: Bearer YOUR_JWT_TOKEN"
 ```
 
