@@ -186,6 +186,15 @@ export class ChatService {
       `Обработка пользовательского сообщения в диалоге ${dialogId}: ${userText}`
     );
 
+    // Проверяем существование диалога
+    const dialog = await this.prisma.chatDialog.findUnique({
+      where: { id: dialogId },
+    });
+
+    if (!dialog) {
+      throw new Error(`Диалог с ID ${dialogId} не найден`);
+    }
+
     // Сохраняем сообщение пользователя
     const userMessage = await this.addMessageToDialog(
       dialogId,
@@ -259,6 +268,15 @@ export class ChatService {
     this.logger.log(
       `Обработка сообщения с коррекцией в диалоге ${dialogId}: ${userText}`
     );
+
+    // Проверяем существование диалога
+    const dialog = await this.prisma.chatDialog.findUnique({
+      where: { id: dialogId },
+    });
+
+    if (!dialog) {
+      throw new Error(`Диалог с ID ${dialogId} не найден`);
+    }
 
     // Формируем отдельный prompt для коррекции и объяснений
     const correctionPrompt = [
@@ -351,5 +369,27 @@ export class ChatService {
     );
 
     return { userMessage, aiMessage, correction };
+  }
+
+  // Удалить диалог со всеми его сообщениями
+  async deleteDialog(dialogId: string) {
+    this.logger.log(`Удаление диалога ${dialogId} со всеми сообщениями`);
+
+    // Проверяем существование диалога
+    const dialog = await this.prisma.chatDialog.findUnique({
+      where: { id: dialogId },
+    });
+
+    if (!dialog) {
+      throw new Error(`Диалог с ID ${dialogId} не найден`);
+    }
+
+    // Удаляем диалог (cascade delete удалит все сообщения)
+    await this.prisma.chatDialog.delete({
+      where: { id: dialogId },
+    });
+
+    this.logger.log(`Диалог ${dialogId} успешно удален`);
+    return { message: 'Диалог успешно удален со всеми сообщениями' };
   }
 }

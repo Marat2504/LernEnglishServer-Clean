@@ -1,4 +1,12 @@
-import { Controller, Post, Body, Param, Get, Query } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Body,
+  Param,
+  Get,
+  Query,
+  Delete,
+} from '@nestjs/common';
 import { ChatService } from './chat.service';
 import { CreateDialogDto } from './dto/create-dialog.dto';
 import { CreateMessageDto } from './dto/create-message.dto';
@@ -105,6 +113,13 @@ export class ChatController {
   ) {
     const { text } = createCorrectionMessageDto;
     return this.chatService.handleUserMessageWithCorrection(dialogId, text);
+  }
+
+  @ApiOperation({ summary: 'Удалить диалог со всеми его сообщениями' })
+  @ApiResponse({ status: 200, description: 'Диалог успешно удален.' })
+  @Delete('dialog/:id')
+  async deleteDialog(@Param('id') dialogId: string) {
+    return this.chatService.deleteDialog(dialogId);
   }
 
   // Дополнительно можно добавить эндпоинты для управления диалогами
