@@ -6,12 +6,20 @@ import {
   Get,
   Query,
   Delete,
+  Put,
 } from '@nestjs/common';
 import { ChatService } from './chat.service';
 import { CreateDialogDto } from './dto/create-dialog.dto';
 import { CreateMessageDto } from './dto/create-message.dto';
 import { CreateCorrectionMessageDto } from './dto/create-correction-message.dto';
-import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { UpdateDialogDto } from './dto/update-dialog.dto';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBody,
+  ApiParam,
+} from '@nestjs/swagger';
 
 @ApiTags('Chat')
 @Controller('chat')
@@ -113,6 +121,73 @@ export class ChatController {
   ) {
     const { text } = createCorrectionMessageDto;
     return this.chatService.handleUserMessageWithCorrection(dialogId, text);
+  }
+
+  @ApiOperation({
+    summary: 'Обновить параметры диалога',
+    description:
+      'Позволяет обновить тему, уровень сложности или уровень языка существующего диалога. Все поля опциональны - можно обновить только нужные параметры.',
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'UUID диалога для обновления',
+    type: 'string',
+  })
+  @ApiBody({
+    type: UpdateDialogDto,
+    description: 'Параметры для обновления диалога',
+    examples: {
+      'Обновить тему': {
+        summary: 'Обновление только темы диалога',
+        value: {
+          topic: 'Обсуждение путешествий по Европе',
+        },
+      },
+      'Обновить уровень сложности': {
+        summary: 'Обновление уровня сложности',
+        value: {
+          difficulty: 'C1',
+        },
+      },
+      'Обновить все параметры': {
+        summary: 'Обновление всех параметров диалога',
+        value: {
+          topic: 'Бизнес английский',
+          difficulty: 'B2',
+          languageLevel: 'B2',
+        },
+      },
+    },
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Диалог успешно обновлен.',
+    schema: {
+      type: 'object',
+      properties: {
+        id: { type: 'string', description: 'UUID диалога' },
+        userId: { type: 'string', description: 'UUID пользователя' },
+        topic: { type: 'string', description: 'Тема диалога' },
+        difficulty: { type: 'string', description: 'Уровень сложности' },
+        languageLevel: { type: 'string', description: 'Уровень языка' },
+        createdAt: { type: 'string', format: 'date-time' },
+        updatedAt: { type: 'string', format: 'date-time' },
+        deletedAt: { type: 'string', format: 'date-time', nullable: true },
+      },
+    },
+  })
+  @ApiResponse({ status: 404, description: 'Диалог не найден.' })
+  @Put('dialog/:id')
+  async updateDialog(
+    @Param('id') dialogId: string,
+    @Body() updateDialogDto: UpdateDialogDto
+  ) {
+    const { topic, difficulty, languageLevel } = updateDialogDto;
+    return this.chatService.updateDialog(dialogId, {
+      topic,
+      difficulty,
+      languageLevel,
+    });
   }
 
   @ApiOperation({ summary: 'Удалить диалог со всеми его сообщениями' })

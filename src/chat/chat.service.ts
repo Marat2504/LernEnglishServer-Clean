@@ -20,12 +20,23 @@ export class ChatService {
     this.logger.log(
       `Создание нового диалога для userId=${userId}, topic=${topic}, difficulty=${difficulty}, languageLevel=${languageLevel}`
     );
+
+    // Если languageLevel не передан, берем из профиля пользователя
+    let finalLanguageLevel = languageLevel;
+    if (!finalLanguageLevel) {
+      const user = await this.prisma.user.findUnique({
+        where: { id: userId },
+        select: { currentLanguageLevel: true },
+      });
+      finalLanguageLevel = user?.currentLanguageLevel || 'A1';
+    }
+
     return this.prisma.chatDialog.create({
       data: {
         userId,
         topic,
         difficulty,
-        languageLevel,
+        languageLevel: finalLanguageLevel,
       },
     });
   }
@@ -369,6 +380,34 @@ export class ChatService {
     );
 
     return { userMessage, aiMessage, correction };
+  }
+
+  // Обновить параметры диалога
+  async updateDialog(
+    dialogId: string,
+    updateData: { topic?: string; difficulty?: string; languageLevel?: string }
+  ) {
+    this.logger.log(
+      `Обновление диалога ${dialogId} с данными: ${JSON.stringify(updateData)}`
+    );
+
+    // Проверяем существование диалога
+    const dialog = await this.prisma.chatDialog.findUnique({
+      where: { id: dialogId },
+    });
+
+    if (!dialog) {
+      throw new Error(`Диалог с ID ${dialogId} не найден`);
+    }
+
+    // Обновляем диалог
+    const updatedDialog = await this.prisma.chatDialog.update({
+      where: { id: dialogId },
+      data: updateData,
+    });
+
+    this.logger.log(`Диалог ${dialogId} успешно обновлен`);
+    return updatedDialog;
   }
 
   // Удалить диалог со всеми его сообщениями

@@ -108,7 +108,7 @@ curl -X POST http://localhost:3000/api/chat/dialog \
   "userId": "123e4567-e89b-12d3-a456-426614174000",
   "topic": "Обсуждение путешествий",
   "difficulty": "B1",
-  "languageLevel": null,
+  "languageLevel": "B1",
   "createdAt": "2024-01-15T10:30:00.000Z",
   "updatedAt": "2024-01-15T10:30:00.000Z",
   "deletedAt": null
@@ -117,7 +117,81 @@ curl -X POST http://localhost:3000/api/chat/dialog \
 
 ---
 
-## 2. Получение диалога с сообщениями
+## 2. Обновление параметров диалога
+
+**Эндпоинт:** `PUT /api/chat/dialog/{id}`
+
+**Назначение:** Позволяет обновить параметры существующего диалога. Все поля опциональны - можно обновить только нужные параметры (тему, уровень сложности или уровень языка).
+
+**Параметры пути:**
+
+- `id` (строка, обязательный) - UUID диалога для обновления
+
+**Тело запроса:**
+
+```json
+{
+  "topic": "Новая тема диалога (опционально)",
+  "difficulty": "A1-C2 (опционально)",
+  "languageLevel": "A1-C2 (опционально)"
+}
+```
+
+**Пример запроса:**
+
+```bash
+curl -X PUT http://localhost:3000/api/chat/dialog/dialog-uuid \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "topic": "Бизнес английский",
+    "difficulty": "B2",
+    "languageLevel": "B2"
+  }'
+```
+
+**Пример ответа (200 OK):**
+
+```json
+{
+  "id": "dialog-uuid",
+  "userId": "123e4567-e89b-12d3-a456-426614174000",
+  "topic": "Бизнес английский",
+  "difficulty": "B2",
+  "languageLevel": "B2",
+  "createdAt": "2024-01-15T10:30:00.000Z",
+  "updatedAt": "2024-01-15T11:45:00.000Z",
+  "deletedAt": null
+}
+```
+
+**Пример ответа при ошибке (404 Not Found):**
+
+```json
+{
+  "statusCode": 404,
+  "message": "Диалог с ID dialog-uuid не найден",
+  "error": "Not Found"
+}
+```
+
+**Использование в UI:**
+
+- Форма редактирования параметров диалога в настройках чата
+- Возможность изменить тему разговора в процессе общения
+- Корректировка уровня сложности или языка пользователя
+- Обновление отображается сразу в интерфейсе
+
+**Особенности:**
+
+- Частичное обновление: можно отправить только те поля, которые нужно изменить
+- Автоматическая установка `updatedAt` при любом изменении
+- Валидация: проверка существования диалога перед обновлением
+- Изменение `languageLevel` влияет на будущие ответы ИИ в этом диалоге
+
+---
+
+## 4. Получение диалога с сообщениями
 
 **Эндпоинт:** `GET /api/chat/dialog/{id}?page=1&limit=50`
 
@@ -188,7 +262,7 @@ curl -X GET "http://localhost:3000/api/chat/dialog/dialog-uuid?page=1&limit=20" 
 
 ---
 
-## 3. Добавление сообщения в диалог
+## 5. Добавление сообщения в диалог
 
 **Эндпоинт:** `POST /api/chat/dialog/{id}/message`
 
@@ -209,7 +283,7 @@ curl -X GET "http://localhost:3000/api/chat/dialog/dialog-uuid?page=1&limit=20" 
 
 ---
 
-## 4. Отправка сообщения и получение ответа ИИ (стандартный режим)
+## 6. Отправка сообщения и получение ответа ИИ (стандартный режим)
 
 **Эндпоинт:** `POST /api/chat/dialog/{id}/message/send`
 
@@ -271,7 +345,7 @@ curl -X POST http://localhost:3000/api/chat/dialog/dialog-uuid/message/send \
 
 ---
 
-## 5. Отправка сообщения с коррекцией ошибок
+## 7. Отправка сообщения с коррекцией ошибок
 
 **Эндпоинт:** `POST /api/chat/dialog/{id}/message/send-with-correction`
 
@@ -339,7 +413,7 @@ curl -X POST http://localhost:3000/api/chat/dialog/dialog-uuid/message/send-with
 
 ---
 
-## 6. Удаление диалога со всеми сообщениями
+## 8. Удаление диалога со всеми сообщениями
 
 **Эндпоинт:** `DELETE /api/chat/dialog/{id}`
 
